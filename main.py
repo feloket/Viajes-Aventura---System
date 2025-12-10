@@ -629,6 +629,69 @@ def menu_todas_reservas(db):
     input("\nPresione Enter para continuar...")
 
 
+def verificar_usuarios_existentes(db):
+    """Verifica si existen usuarios en el sistema."""
+    try:
+        connection = db.conectar()
+        cursor = connection.cursor()
+        cursor.execute("SELECT COUNT(*) FROM Usuarios")
+        count = cursor.fetchone()[0]
+        cursor.close()
+        return count > 0
+    except Exception as e:
+        print(f"Error al verificar usuarios: {e}")
+        return False
+
+
+def crear_usuario_inicial(db):
+    """Crea un usuario administrador inicial cuando no existen usuarios."""
+    print("\n" + "="*70)
+    print(" " * 15 + "CONFIGURACION INICIAL DEL SISTEMA")
+    print("="*70)
+    print("\nNo hay usuarios registrados en el sistema.")
+    print("Es necesario crear un usuario administrador para comenzar.\n")
+
+    # Crear cliente para el administrador
+    print("--- DATOS DEL ADMINISTRADOR ---")
+    nombre_completo = input("Nombre completo: ").strip()
+    email = input("Email: ").strip()
+    telefono = input("Telefono: ").strip()
+    direccion = input("Direccion: ").strip()
+
+    cliente = Cliente(db, nombre_completo=nombre_completo, email=email,
+                      telefono=telefono, direccion=direccion)
+    id_cliente = cliente.guardar()
+
+    if not id_cliente:
+        print("\nError al crear el cliente. Intente nuevamente.")
+        return None
+
+    # Crear usuario administrador
+    print("\n--- CREDENCIALES DE ACCESO ---")
+    nombre_usuario = input("Nombre de usuario: ").strip()
+    password = input("Contrasena: ").strip()
+    password_confirm = input("Confirmar contrasena: ").strip()
+
+    if password != password_confirm:
+        print("\nLas contrasenas no coinciden.")
+        return None
+
+    usuario = Usuario(db, nombre_usuario=nombre_usuario, password=password,
+                      rol="admin", id_cliente=id_cliente)
+    id_usuario = usuario.registrar()
+
+    if id_usuario:
+        print("\n" + "="*70)
+        print("Usuario administrador creado exitosamente!")
+        print("Ahora puede iniciar sesion con sus credenciales.")
+        print("="*70)
+        input("\nPresione Enter para continuar...")
+        return True
+    else:
+        print("\nError al crear el usuario. Intente nuevamente.")
+        return None
+
+
 def autenticar_usuario(db):
     """Pantalla de autenticacion de usuarios."""
     print("\n" + "="*70)
@@ -665,6 +728,16 @@ def main():
             # Crear tablas si no existen
             db.crear_tablas()
             print("\nBase de datos lista")
+
+            # Verificar si existen usuarios en el sistema
+            if not verificar_usuarios_existentes(db):
+                print("\n" + "="*70)
+                print("PRIMERA EJECUCION DEL SISTEMA")
+                print("="*70)
+                if not crear_usuario_inicial(db):
+                    print("\nNo se pudo crear el usuario inicial.")
+                    print("El sistema se cerrara.")
+                    return
 
             # Autenticacion
             USUARIO_ACTUAL = None
